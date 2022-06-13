@@ -62,6 +62,22 @@ bool __riscv_isa_extension_available(const unsigned long *isa_bitmap, int bit)
 }
 EXPORT_SYMBOL_GPL(__riscv_isa_extension_available);
 
+static inline int _decimal_part_to_uint(const char *s, unsigned int *res)
+{
+	unsigned int value = 0, d;
+
+	if (!isdigit(*s))
+		return -EINVAL;
+	do {
+		d = *s - '0';
+		if (value > (UINT_MAX - d) / 10)
+			return -ERANGE;
+		value = value * 10 + d;
+	} while (isdigit(*++s));
+	*res = value;
+	return 0;
+}
+
 void __init riscv_fill_hwcap(void)
 {
 	struct device_node *node;
@@ -109,7 +125,10 @@ void __init riscv_fill_hwcap(void)
 		for (; *isa; ++isa) {
 			const char *ext = isa++;
 			const char *ext_end = isa;
-			bool ext_long = false, ext_err = false;
+			unsigned int ext_major = UINT_MAX; /* default */
+			unsigned int ext_minor = 0;
+			bool ext_long, ext_vpair,
+			     ext_err = false, ext_err_ver = false;
 
 			switch (*ext) {
 			case 's':
@@ -139,29 +158,36 @@ void __init riscv_fill_hwcap(void)
 					break;
 				if (!isdigit(ext_end[-1]))
 					break;
-				/* Skip the minor version */
 				while (isdigit(*--ext_end))
 					;
-				if (ext_end[0] != 'p'
-				    || !isdigit(ext_end[-1])) {
-					/* Advance it to offset the pre-decrement */
+				ext_vpair = (ext_end[0] == 'p')
+					    && isdigit(ext_end[-1]);
+				if (_decimal_part_to_uint(ext_end + 1,
+							  &ext_major))
+					ext_err_ver = true;
+				if (!ext_vpair) {
 					++ext_end;
 					break;
 				}
-				/* Skip the major version */
+				ext_minor = ext_major;
 				while (isdigit(*--ext_end))
 					;
-				++ext_end;
+				if (_decimal_part_to_uint(++ext_end, &ext_major)
+				    || ext_major == UINT_MAX)
+					ext_err_ver = true;
 				break;
 			default:
+				ext_long = false;
 				if (unlikely(!islower(*ext))) {
 					ext_err = true;
 					break;
 				}
-				/* Find next extension */
+				/* Parse forwards finding next extension */
 				if (!isdigit(*isa))
 					break;
-				/* Skip the minor version */
+				_decimal_part_to_uint(isa, &ext_major);
+				if (ext_major == UINT_MAX)
+					ext_err_ver = true;
 				while (isdigit(*++isa))
 					;
 				if (*isa != 'p')
@@ -170,7 +196,8 @@ void __init riscv_fill_hwcap(void)
 					--isa;
 					break;
 				}
-				/* Skip the major version */
+				if (_decimal_part_to_uint(isa, &ext_minor))
+					ext_err_ver = true;
 				while (isdigit(*++isa))
 					;
 				break;

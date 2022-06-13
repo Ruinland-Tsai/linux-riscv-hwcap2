@@ -48,6 +48,31 @@ unsigned long riscv_isa_extension_base(const unsigned long *isa_bitmap)
 }
 EXPORT_SYMBOL_GPL(riscv_isa_extension_base);
 
+SYSCALL_DEFINE3(riscv_check_extension, const char __user *, extname, unsigned long __user*, major, unsigned long __user*, minor)
+{
+	int len;
+	struct rvext *ext_ptr;
+	struct vdso_data *vdata = __arch_get_k_vdso_data();
+	struct list_head *ll_ptr;
+	#define MAX_ARG_STRLEN (PAGE_SIZE * 32)
+	char kern_extname[MAX_ARG_STRLEN];
+
+	len = strnlen_user(extname, MAX_ARG_STRLEN);
+	#undef MAX_ARG_STRLEN
+	strncpy_from_user(kern_extname, extname, len);
+	ext_ptr = (struct rvext *) &(vdata[0].arch_data.buffer);
+	ll_ptr  = &(ext_ptr->exts);
+	for (; ll_ptr != NULL; ext_ptr++) {
+	if (strcmp(ext_ptr->ext_name, kern_extname) == 0) {
+		copy_to_user(major, &(ext_ptr->spec_maj), sizeof(unsigned long));
+		copy_to_user(minor, &(ext_ptr->spec_min), sizeof(unsigned long));
+		return 0;
+		}
+	ll_ptr = ll_ptr->next;
+	}
+	return -1;
+}
+
 /**
  * __riscv_isa_extension_available() - Check whether given extension
  * is available or not

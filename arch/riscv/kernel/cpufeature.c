@@ -280,6 +280,9 @@ void __init riscv_fill_hwcap(void)
 
 				strncpy(tmp, ext, ext_end-ext);
 				SET_ISA_EXT_MAP("sscofpmf", RISCV_ISA_EXT_SSCOFPMF);
+				SET_ISA_EXT_MAP("zba", RISCV_ISA_EXT_zba);
+				SET_ISA_EXT_MAP("zbb", RISCV_ISA_EXT_zbb);
+				SET_ISA_EXT_MAP("zfh", RISCV_ISA_EXT_zfh);
 			}
 #undef SET_ISA_EXT_MAP
 		}

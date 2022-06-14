@@ -54,6 +54,10 @@ extern unsigned long elf_hwcap;
  */
 enum riscv_isa_ext_id {
 	RISCV_ISA_EXT_SSCOFPMF = RISCV_ISA_EXT_BASE,
+	RISCV_ISA_EXT_xsfvfhbfmin,
+	RISCV_ISA_EXT_zba,
+	RISCV_ISA_EXT_zbb,
+	RISCV_ISA_EXT_zfh,
 	RISCV_ISA_EXT_ID_MAX = RISCV_ISA_EXT_MAX,
 };
 

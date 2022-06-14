@@ -88,6 +88,10 @@ int riscv_of_parent_hartid(struct device_node *node)
  */
 static struct riscv_isa_ext_data isa_ext_arr[] = {
 	__RISCV_ISA_EXT_DATA(sscofpmf, RISCV_ISA_EXT_SSCOFPMF),
+	__RISCV_ISA_EXT_DATA(xsfvfhbfmin, RISCV_ISA_EXT_xsfvfhbfmin),
+	__RISCV_ISA_EXT_DATA(zba, RISCV_ISA_EXT_zba),
+	__RISCV_ISA_EXT_DATA(zbb, RISCV_ISA_EXT_zbb),
+	__RISCV_ISA_EXT_DATA(zfh, RISCV_ISA_EXT_zfh),
 	__RISCV_ISA_EXT_DATA("", RISCV_ISA_EXT_MAX),
 };
 

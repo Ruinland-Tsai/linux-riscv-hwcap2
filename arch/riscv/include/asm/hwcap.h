@@ -17,6 +17,8 @@
  * instruction set this cpu supports.
  */
 #define ELF_HWCAP		(elf_hwcap)
+extern unsigned long vdso_data_location;
+#define ELF_HWCAP2      (vdso_data_location + offsetof(struct vdso_data, arch_data))
 
 enum {
 	CAP_HWCAP = 1,

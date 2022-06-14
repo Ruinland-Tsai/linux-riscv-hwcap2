@@ -212,6 +212,8 @@ static int __init vdso_init(void)
 }
 arch_initcall(vdso_init);
 
+unsigned long vdso_data_location;
+
 static int __setup_additional_pages(struct mm_struct *mm,
 				    struct linux_binprm *bprm,
 				    int uses_interp)
@@ -226,6 +228,7 @@ static int __setup_additional_pages(struct mm_struct *mm,
 	vdso_mapping_len = vdso_text_len + VVAR_SIZE;
 
 	vdso_base = get_unmapped_area(NULL, 0, vdso_mapping_len, 0, 0);
+	vdso_data_location = vdso_base;
 	if (IS_ERR_VALUE(vdso_base)) {
 		ret = ERR_PTR(vdso_base);
 		goto up_fail;

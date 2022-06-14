@@ -48,6 +48,7 @@
 #include <linux/uaccess.h>
 #include <asm/param.h>
 #include <asm/page.h>
+#include <vdso/vsyscall.h>
 
 #ifndef ELF_COMPAT
 #define ELF_COMPAT 0

@@ -14,6 +14,13 @@
 #include <asm/smp.h>
 #include <asm/switch_to.h>
 
+#include <linux/syscalls.h>
+#include <vdso/datapage.h>
+#include <vdso/helpers.h>
+#include <vdso/vsyscall.h>
+#include <asm/vdso/data.h>
+#include <asm/sbi.h>
+
 #define NUM_ALPHA_EXTS ('z' - 'a' + 1)
 
 unsigned long elf_hwcap __read_mostly;
@@ -80,6 +87,11 @@ static inline int _decimal_part_to_uint(const char *s, unsigned int *res)
 
 void __init riscv_fill_hwcap(void)
 {
+	struct vdso_data *vdata = __arch_get_k_vdso_data();
+	struct rvext *craft;
+	struct list_head *iter;
+	#define MAX_HART 20
+	unsigned int ext_offset_n[MAX_HART] = {0};
 	struct device_node *node;
 	const char *isa;
 	char print_str[NUM_ALPHA_EXTS + 1];
@@ -109,6 +121,12 @@ void __init riscv_fill_hwcap(void)
 			pr_warn("Unable to find \"riscv,isa\" devicetree entry\n");
 			continue;
 		}
+
+		vdata[riscv_of_processor_hartid(node)].arch_data.mvendor = sbi_get_mvendorid();
+		vdata[riscv_of_processor_hartid(node)].arch_data.march   = sbi_get_marchid();
+		vdata[riscv_of_processor_hartid(node)].arch_data.mimpl   = sbi_get_mimpid();
+		vdata[riscv_of_processor_hartid(node)].arch_data.extension_head.prev = NULL;
+		vdata[riscv_of_processor_hartid(node)].arch_data.extension_head.next = NULL;
 
 		temp = isa;
 #if IS_ENABLED(CONFIG_32BIT)
@@ -208,8 +226,23 @@ void __init riscv_fill_hwcap(void)
 #define SET_ISA_EXT_MAP(name, bit)						\
 			do {							\
 				if ((ext_end - ext == sizeof(name) - 1) &&	\
-				     !memcmp(ext, name, sizeof(name) - 1))	\
+				     !memcmp(ext, name, sizeof(name) - 1)) {	\
 					set_bit(bit, this_isa);			\
+					craft = (struct rvext *) \
+					&(vdata[riscv_of_processor_hartid(node)].arch_data.buffer[\
+					sizeof(struct rvext) * ext_offset_n[riscv_of_processor_hartid(node)]]); \
+					craft->spec_maj = ext_major; \
+					craft->spec_min = ext_minor; \
+					strncpy(craft->ext_name, tmp, ext_end-ext); \
+					iter = &(vdata[riscv_of_processor_hartid(node)].arch_data.extension_head);\
+					while (iter->next != NULL) { \
+						iter = iter->next; \
+					} \
+					craft->exts.prev = iter; \
+					craft->exts.next = NULL; \
+					iter->next = &(craft->exts); \
+					++ext_offset_n[riscv_of_processor_hartid(node)]; \
+					} \
 			} while (false)						\
 
 			if (unlikely(ext_err))
@@ -218,6 +251,9 @@ void __init riscv_fill_hwcap(void)
 				this_hwcap |= isa2hwcap[(unsigned char)(*ext)];
 				set_bit(*ext - 'a', this_isa);
 			} else {
+				char tmp[256] = {'\0'};
+
+				strncpy(tmp, ext, ext_end-ext);
 				SET_ISA_EXT_MAP("sscofpmf", RISCV_ISA_EXT_SSCOFPMF);
 			}
 #undef SET_ISA_EXT_MAP
